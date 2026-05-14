@@ -27,6 +27,9 @@ class User(AbstractUser):
         default=PLAN_FREE,
     )
 
+    # Profile picture
+    profile_picture = models.ImageField(upload_to='users/avatars/', blank=True, null=True)
+
     # Usage tracking (updated by Celery tasks)
     audiobooks_created = models.IntegerField(default=0)
     total_minutes_generated = models.FloatField(default=0.0)

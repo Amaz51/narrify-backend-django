@@ -209,6 +209,11 @@ CELERY_TASK_ALWAYS_EAGER = False  # Set True in tests
 # ─── FASTAPI INTEGRATION ─────────────────────────────────────────────────────
 FASTAPI_URL = config('FASTAPI_URL', default='http://localhost:8001/api')
 FASTAPI_TIMEOUT = 300  # 5 minutes
+# Filesystem path to FastAPI's outputs directory (for secure download proxy)
+FASTAPI_OUTPUT_DIR = config(
+    'FASTAPI_OUTPUT_DIR',
+    default=str(BASE_DIR.parent.parent / 'narrify-backend-complete' / 'backend' / 'data' / 'outputs'),
+)
 
 # ─── LOGGING ─────────────────────────────────────────────────────────────────
 LOGGING = {

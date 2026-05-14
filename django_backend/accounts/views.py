@@ -130,7 +130,7 @@ def profile_view(request):
     PATCH /api/auth/profile/ → Update full_name, phone_number, email.
     """
     if request.method == 'GET':
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     # PATCH
@@ -142,7 +142,7 @@ def profile_view(request):
     )
     serializer.is_valid(raise_exception=True)
     serializer.save()
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={'request': request}).data)
 
 
 @api_view(['POST'])

@@ -67,6 +67,7 @@ def process_audiobook_task(self, book_id: int):
             f'{fastapi_url}/generate/from-processing',
             json={
                 'file_id': book.file_id,
+                'title': book.title,
                 'chapters': process_data.get('chapters', []),
                 'emotion_intensity': book.emotion_intensity,
                 'base_speed': book.base_speed,
@@ -86,10 +87,14 @@ def process_audiobook_task(self, book_id: int):
         book.total_duration = generate_data.get('duration', 0.0)
         book.generation_time = generate_data.get('generation_time', 0.0)
         book.total_chapters = len(process_data.get('chapters', []))
-        book.output_audio_path = generate_data.get('output_path', '')
+        book.output_audio_path = generate_data.get('audio_url', '')
         book.status = Book.STATUS_COMPLETED
         book.completed_at = timezone.now()
         book.save()
+
+        # Invalidate list cache so dashboard polling picks up the new status
+        from django.core.cache import cache
+        cache.delete(f'books_list_{book.user_id}')
 
         # Save chapter and segment data
         for chapter_data in process_data.get('chapters', []):
@@ -146,6 +151,8 @@ def process_audiobook_task(self, book_id: int):
             book.status = Book.STATUS_FAILED
             book.error_message = f'FastAPI unreachable after retries: {exc}'
             book.save(update_fields=['status', 'error_message'])
+            from django.core.cache import cache
+            cache.delete(f'books_list_{book.user_id}')
             return {'status': 'failed', 'detail': str(exc)}
 
     except Exception as exc:
@@ -153,4 +160,6 @@ def process_audiobook_task(self, book_id: int):
         book.status = Book.STATUS_FAILED
         book.error_message = str(exc)
         book.save(update_fields=['status', 'error_message'])
+        from django.core.cache import cache
+        cache.delete(f'books_list_{book.user_id}')
         raise

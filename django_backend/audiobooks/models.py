@@ -54,6 +54,15 @@ class Book(models.Model):
     # Audio output path (relative to MEDIA_ROOT)
     output_audio_path = models.CharField(max_length=500, blank=True)
 
+    # Optional cover thumbnail
+    thumbnail = models.ImageField(upload_to='books/thumbnails/', blank=True, null=True)
+
+    # Visibility
+    is_public = models.BooleanField(
+        default=False,
+        help_text='If True, this audiobook is visible to all users in the public library.',
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -133,6 +142,68 @@ class AudioSegment(models.Model):
 
     def __str__(self):
         return f'[{self.speaker_name}] {self.text[:60]}...'
+
+
+class AudioEvaluation(models.Model):
+    """Stores objective quality metrics for a generated audiobook."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='evaluations')
+    evaluated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='evaluations_triggered'
+    )
+
+    # Audio source used for evaluation
+    audio_url = models.CharField(max_length=500, blank=True)
+
+    # ── Intelligibility ───────────────────────────────────────────────────────
+    wer = models.FloatField(null=True, blank=True, help_text='Word Error Rate (0–1, lower is better)')
+    cer = models.FloatField(null=True, blank=True, help_text='Character Error Rate (0–1, lower is better)')
+    transcribed_text = models.TextField(blank=True)
+
+    # ── Naturalness ───────────────────────────────────────────────────────────
+    utmos_score = models.FloatField(null=True, blank=True, help_text='Predicted MOS 1–5 (higher is better)')
+    utmos_method = models.CharField(max_length=50, blank=True, help_text='utmos22 or energy_proxy')
+
+    # ── Audio Quality ─────────────────────────────────────────────────────────
+    snr_db = models.FloatField(null=True, blank=True, help_text='SNR in dB (> 20 dB is clean)')
+
+    # ── Emotion Accuracy ──────────────────────────────────────────────────────
+    intended_emotion = models.CharField(max_length=50, blank=True)
+    detected_emotion = models.CharField(max_length=50, blank=True)
+    emotion_match = models.BooleanField(null=True, blank=True)
+    ser_confidence = models.FloatField(null=True, blank=True)
+
+    # ── Speaker Similarity ────────────────────────────────────────────────────
+    secs_score = models.FloatField(null=True, blank=True, help_text='Speaker cosine similarity −1 to 1')
+
+    # ── Composite ────────────────────────────────────────────────────────────
+    overall_score = models.FloatField(null=True, blank=True, help_text='Weighted composite 0–100')
+
+    # Full FastAPI response payload
+    raw_results = models.JSONField(default=dict)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    error_message = models.TextField(blank=True)
+
+    evaluated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-evaluated_at']
+        indexes = [
+            models.Index(fields=['book', '-evaluated_at']),
+        ]
+
+    def __str__(self):
+        return f'Eval #{self.pk} — {self.book.title} (score={self.overall_score})'
 
 
 class VoiceProfile(models.Model):

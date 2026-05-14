@@ -7,6 +7,7 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """Read-only serializer for public user profile data."""
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -21,6 +22,8 @@ class UserSerializer(serializers.ModelSerializer):
             'total_minutes_generated',
             'created_at',
             'is_staff',
+            'profile_picture',
+            'profile_picture_url',
         ]
         read_only_fields = [
             'id',
@@ -30,13 +33,21 @@ class UserSerializer(serializers.ModelSerializer):
             'is_staff',
         ]
 
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            return obj.profile_picture.url
+        return None
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating profile fields."""
+    """Serializer for updating profile fields including profile picture."""
 
     class Meta:
         model = User
-        fields = ['full_name', 'phone_number', 'email']
+        fields = ['full_name', 'phone_number', 'email', 'profile_picture']
 
     def validate_email(self, value):
         user = self.context['request'].user

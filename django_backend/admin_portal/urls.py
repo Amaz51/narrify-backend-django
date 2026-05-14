@@ -7,4 +7,8 @@ urlpatterns = [
     path('users/<int:user_id>/', views.user_detail_view, name='admin-user-detail'),
     path('books/', views.book_list_view, name='admin-book-list'),
     path('books/<int:book_id>/', views.book_detail_view, name='admin-book-detail'),
+    # Evaluation
+    path('books/<int:book_id>/evaluate/', views.evaluate_book_view, name='admin-book-evaluate'),
+    path('evaluations/', views.evaluation_list_view, name='admin-evaluation-list'),
+    path('evaluations/<int:evaluation_id>/', views.evaluation_detail_view, name='admin-evaluation-detail'),
 ]

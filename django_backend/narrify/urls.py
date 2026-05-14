@@ -2,9 +2,28 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 
+
+def api_root(request):
+    return JsonResponse({
+        "service": "Narrify Django Backend",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "auth": "/api/auth/",
+            "audiobooks": "/api/audiobooks/",
+            "admin": "/admin/",
+            "token_refresh": "/api/token/refresh/",
+        }
+    })
+
+
 urlpatterns = [
+    # Root
+    path('', api_root),
+
     # Django admin
     path('admin/', admin.site.urls),
 
