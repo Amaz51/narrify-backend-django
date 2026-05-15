@@ -328,6 +328,33 @@ def evaluate_book_view(request, book_id):
     intended_emotion = request.data.get('intended_emotion', '').strip() or None
     original_text = request.data.get('original_text', '').strip() or None
 
+    # ── Auto-fetch original text from FastAPI segment cache (for WER) ─────────
+    if not original_text and book.file_id:
+        try:
+            text_resp = http_requests.get(
+                f"{FASTAPI_BASE}/segments/{book.file_id}/text", timeout=10
+            )
+            if text_resp.ok:
+                fetched = text_resp.json().get('text', '').strip()
+                if fetched:
+                    original_text = fetched
+                    logger.info('Auto-fetched %d chars of original text for book %s', len(original_text), book_id)
+        except Exception as e:
+            logger.debug('Could not auto-fetch original text: %s', e)
+
+    # ── Auto-fetch reference audio from user's voice profile (for SECS) ──────
+    if not reference_bytes:
+        try:
+            from audiobooks.models import VoiceProfile
+            profile = VoiceProfile.objects.filter(user=book.user).order_by('-created_at').first()
+            if profile and profile.sample_audio:
+                with open(profile.sample_audio.path, 'rb') as f:
+                    reference_bytes = f.read()
+                reference_filename = os.path.basename(profile.sample_audio.name)
+                logger.info('Auto-using voice profile "%s" as SECS reference for book %s', profile.name, book_id)
+        except Exception as e:
+            logger.debug('Could not auto-fetch voice profile reference: %s', e)
+
     # ── Create pending evaluation record ─────────────────────────────────────
     evaluation = AudioEvaluation.objects.create(
         book=book,
